@@ -66,6 +66,7 @@ MODULE qs_initial_guess
    USE particle_methods,                ONLY: get_particle_set
    USE particle_types,                  ONLY: particle_type
    USE qs_atomic_block,                 ONLY: calculate_atomic_block_dm
+   USE qs_cneo_types,                   ONLY: cneo_potential_type
    USE qs_density_matrices,             ONLY: calculate_density_matrix
    USE qs_dftb_utils,                   ONLY: get_dftb_atom_param
    USE qs_environment_types,            ONLY: get_qs_env,&
@@ -147,7 +148,8 @@ CONTAINS
       INTEGER, DIMENSION(:), POINTER                     :: atom_list, elec_conf, nelec_kind, &
                                                             sort_kind
       LOGICAL :: did_guess, do_hfx_ri_mo, do_kpoints, do_std_diag, exist, has_unit_metric, &
-         natom_mismatch, need_mos, need_wm, ofgpw, owns_ortho, print_history_log, print_log
+         natom_mismatch, need_mos, need_wm, ofgpw, owns_ortho, print_history_log, print_log, &
+         cneo_potential_present
       REAL(dp), ALLOCATABLE, DIMENSION(:, :)             :: buff, buff2
       REAL(dp), DIMENSION(:, :), POINTER                 :: pdata
       REAL(KIND=dp)                                      :: checksum, eps, length, maxocc, occ, &
@@ -555,6 +557,12 @@ CONTAINS
          END IF
 
          owns_ortho = .FALSE.
+
+         CALL get_qs_kind_set(qs_kind_set, cneo_potential_present=cneo_potential_present)
+         IF (cneo_potential_present) THEN
+            CPABORT("calculate_first_density_matrix: core_guess not implemented for CNEO")
+         END IF
+
          IF (.NOT. ASSOCIATED(work1)) THEN
             need_wm = .TRUE.
             CPASSERT(.NOT. ASSOCIATED(work2))
@@ -1206,6 +1214,7 @@ CONTAINS
       TYPE(gth_potential_type), POINTER                  :: gth_potential
       TYPE(gto_basis_set_type), POINTER                  :: orb_basis_set
       TYPE(sgp_potential_type), POINTER                  :: sgp_potential
+      TYPE(cneo_potential_type), POINTER                 :: cneo_potential
       TYPE(xtb_atom_type), POINTER                       :: xtb_kind
 
       CALL timeset(routineN, handle)
@@ -1255,8 +1264,10 @@ CONTAINS
             CALL get_qs_kind(qs_kind_set(ikind), basis_set=orb_basis_set, &
                              all_potential=all_potential, &
                              gth_potential=gth_potential, &
-                             sgp_potential=sgp_potential)
-            has_pot = ASSOCIATED(all_potential) .OR. ASSOCIATED(gth_potential) .OR. ASSOCIATED(sgp_potential)
+                             sgp_potential=sgp_potential, &
+                             cneo_potential=cneo_potential)
+            has_pot = ASSOCIATED(all_potential) .OR. ASSOCIATED(gth_potential) .OR. &
+                      ASSOCIATED(sgp_potential) .OR. ASSOCIATED(cneo_potential)
 
             IF (dft_control%qs_control%dftb) THEN
                CALL get_dftb_atom_param(qs_kind_set(ikind)%dftb_parameter, &

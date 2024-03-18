@@ -37,6 +37,8 @@ MODULE qs_subsys_methods
    USE molecule_kind_types,             ONLY: get_molecule_kind,&
                                               molecule_kind_type,&
                                               set_molecule_kind
+   USE qs_cneo_types,                   ONLY: cneo_potential_type,&
+                                              get_cneo_potential
    USE qs_kind_types,                   ONLY: create_qs_kind_set,&
                                               get_qs_kind,&
                                               init_atom_electronic_state,&
@@ -170,6 +172,7 @@ CONTAINS
       TYPE(gto_basis_set_type), POINTER                  :: orb_basis_set
       TYPE(molecule_kind_type), POINTER                  :: molecule_kind
       TYPE(sgp_potential_type), POINTER                  :: sgp_potential
+      TYPE(cneo_potential_type), POINTER                 :: cneo_potential
 
       IF (ASSOCIATED(molecule_kind_set)) THEN
 
@@ -197,7 +200,8 @@ CONTAINS
                                 basis_set=orb_basis_set, &
                                 all_potential=all_potential, &
                                 gth_potential=gth_potential, &
-                                sgp_potential=sgp_potential)
+                                sgp_potential=sgp_potential, &
+                                cneo_potential=cneo_potential)
 
                ! Obtain the electronic state of the atom
                ! The same state is used to calculate the ATOMIC GUESS
@@ -233,6 +237,9 @@ CONTAINS
                ELSE IF (ASSOCIATED(sgp_potential)) THEN
                   CALL get_potential(potential=sgp_potential, zeff=zeff, &
                                      zeff_correction=zeff_correction)
+               ELSE IF (ASSOCIATED(cneo_potential)) THEN
+                  CALL get_cneo_potential(potential=cneo_potential, zeff=zeff)
+                  zeff_correction = 0.0_dp
                ELSE
                   zeff = 0.0_dp
                   zeff_correction = 0.0_dp

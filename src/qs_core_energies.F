@@ -29,6 +29,7 @@ MODULE qs_core_energies
    USE message_passing,                 ONLY: mp_comm_type,&
                                               mp_para_env_type
    USE particle_types,                  ONLY: particle_type
+   USE qs_cneo_types,                   ONLY: cneo_potential_type
    USE qs_energy_types,                 ONLY: qs_energy_type
    USE qs_environment_types,            ONLY: get_qs_env,&
                                               qs_environment_type
@@ -226,6 +227,7 @@ CONTAINS
       TYPE(qs_force_type), DIMENSION(:), POINTER         :: force
       TYPE(qs_kind_type), DIMENSION(:), POINTER          :: qs_kind_set
       TYPE(virial_type), POINTER                         :: virial
+      TYPE(cneo_potential_type), POINTER                 :: cneo_potential
 
       CALL timeset(routineN, handle)
 
@@ -275,10 +277,14 @@ CONTAINS
       END IF
 
       DO ikind = 1, nkind
-         CALL get_qs_kind(qs_kind_set(ikind), &
-                          alpha_core_charge=alpha(ikind), &
-                          core_charge_radius=radius(ikind), &
-                          zeff=zeff(ikind))
+         NULLIFY (cneo_potential)
+         CALL get_qs_kind(qs_kind_set(ikind), cneo_potential=cneo_potential)
+         IF (.NOT. ASSOCIATED(cneo_potential)) THEN
+            CALL get_qs_kind(qs_kind_set(ikind), &
+                             alpha_core_charge=alpha(ikind), &
+                             core_charge_radius=radius(ikind), &
+                             zeff=zeff(ikind))
+         END IF
       END DO
 
       ecore_overlap = 0.0_dp
@@ -369,6 +375,7 @@ CONTAINS
       TYPE(particle_type), DIMENSION(:), POINTER         :: particle_set
       TYPE(qs_energy_type), POINTER                      :: energy
       TYPE(qs_kind_type), DIMENSION(:), POINTER          :: qs_kind_set
+      TYPE(cneo_potential_type), POINTER                 :: cneo_potential
 
 ! -------------------------------------------------------------------------
 
@@ -382,8 +389,13 @@ CONTAINS
 
       DO ikind = 1, SIZE(atomic_kind_set)
          CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom)
-         CALL get_qs_kind(qs_kind_set(ikind), zeff=zeff, alpha_core_charge=alpha_core_charge)
-         ecore_self = ecore_self - REAL(natom, dp)*zeff**2*SQRT(alpha_core_charge)
+         NULLIFY (cneo_potential)
+         CALL get_qs_kind(qs_kind_set(ikind), cneo_potential=cneo_potential)
+         ! nuclear density self-interaction is already removed in CNEO
+         IF (.NOT. ASSOCIATED(cneo_potential)) THEN
+            CALL get_qs_kind(qs_kind_set(ikind), zeff=zeff, alpha_core_charge=alpha_core_charge)
+            ecore_self = ecore_self - REAL(natom, dp)*zeff**2*SQRT(alpha_core_charge)
+         END IF
       END DO
 
       energy%core_self = ecore_self/SQRT(twopi)
@@ -400,13 +412,18 @@ CONTAINS
             CALL atprop_array_init(atprop%ateself, natom)
 
             DO ikind = 1, SIZE(atomic_kind_set)
-               nparticle_local = local_particles%n_el(ikind)
-               CALL get_qs_kind(qs_kind_set(ikind), zeff=zeff, alpha_core_charge=alpha_core_charge)
-               es = zeff**2*SQRT(alpha_core_charge)/SQRT(twopi)
-               DO iparticle_local = 1, nparticle_local
-                  iatom = local_particles%list(ikind)%array(iparticle_local)
-                  atprop%ateself(iatom) = atprop%ateself(iatom) - es
-               END DO
+               NULLIFY (cneo_potential)
+               CALL get_qs_kind(qs_kind_set(ikind), cneo_potential=cneo_potential)
+               ! nuclear density self-interaction is already removed in CNEO
+               IF (.NOT. ASSOCIATED(cneo_potential)) THEN
+                  nparticle_local = local_particles%n_el(ikind)
+                  CALL get_qs_kind(qs_kind_set(ikind), zeff=zeff, alpha_core_charge=alpha_core_charge)
+                  es = zeff**2*SQRT(alpha_core_charge)/SQRT(twopi)
+                  DO iparticle_local = 1, nparticle_local
+                     iatom = local_particles%list(ikind)%array(iparticle_local)
+                     atprop%ateself(iatom) = atprop%ateself(iatom) - es
+                  END DO
+               END IF
             END DO
          END IF
       END IF

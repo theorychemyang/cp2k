@@ -90,6 +90,7 @@ MODULE pw_env_methods
                                               pw_pool_p_type,&
                                               pw_pool_release,&
                                               pw_pools_dealloc
+   USE qs_cneo_types,                   ONLY: cneo_potential_type
    USE qs_dispersion_types,             ONLY: qs_dispersion_type
    USE qs_environment_types,            ONLY: get_qs_env,&
                                               qs_environment_type
@@ -790,6 +791,7 @@ CONTAINS
       TYPE(qs_kind_type), DIMENSION(:), POINTER          :: qs_kind_set
       TYPE(qs_kind_type), POINTER                        :: qs_kind
       TYPE(rho0_mpole_type), POINTER                     :: rho0_mpole
+      TYPE(cneo_potential_type), POINTER                 :: cneo_potential
 
       ! a very small safety factor might be needed for roundoff issues
       ! e.g. radius being computed here as 12.998 (13) and 13.002 (14) during the collocation
@@ -832,12 +834,16 @@ CONTAINS
          ! this should, at a give point be changed
          ! so that also for the core a multigrid is used
          DO ikind = 1, nkind
-            CALL get_qs_kind(qs_kind_set(ikind), &
-                             alpha_core_charge=alpha, ccore_charge=core_charge)
-            IF (alpha > 0.0_dp .AND. core_charge .NE. 0.0_dp) THEN
-               maxradius = MAX(maxradius, exp_radius(0, alpha, eps_rho, core_charge, rlow=maxradius))
-               ! forces
-               maxradius = MAX(maxradius, exp_radius(1, alpha, eps_rho, core_charge, rlow=maxradius))
+            NULLIFY (cneo_potential)
+            CALL get_qs_kind(qs_kind_set(ikind), cneo_potential=cneo_potential)
+            IF (.NOT. ASSOCIATED(cneo_potential)) THEN
+               CALL get_qs_kind(qs_kind_set(ikind), &
+                                alpha_core_charge=alpha, ccore_charge=core_charge)
+               IF (alpha > 0.0_dp .AND. core_charge .NE. 0.0_dp) THEN
+                  maxradius = MAX(maxradius, exp_radius(0, alpha, eps_rho, core_charge, rlow=maxradius))
+                  ! forces
+                  maxradius = MAX(maxradius, exp_radius(1, alpha, eps_rho, core_charge, rlow=maxradius))
+               END IF
             END IF
          END DO
 

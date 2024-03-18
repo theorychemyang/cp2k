@@ -139,6 +139,7 @@ MODULE qs_scf_post_gpw
    USE qs_grid_atom,                    ONLY: grid_atom_type
    USE qs_integral_utils,               ONLY: basis_set_list_setup
    USE qs_kind_types,                   ONLY: get_qs_kind,&
+                                              get_qs_kind_set,&
                                               qs_kind_type
    USE qs_ks_methods,                   ONLY: calc_rho_tot_gspace,&
                                               qs_ks_update_qs_env
@@ -1206,9 +1207,11 @@ CONTAINS
       CHARACTER(LEN=default_path_length)                 :: filename
       INTEGER                                            :: handle, maxmom, reference, unit_nr
       LOGICAL                                            :: com_nl, do_kpoints, magnetic, periodic, &
-                                                            second_ref_point, vel_reprs
+                                                            second_ref_point, vel_reprs, &
+                                                            cneo_potential_present
       REAL(KIND=dp), DIMENSION(:), POINTER               :: ref_point
       TYPE(section_vals_type), POINTER                   :: print_key
+      TYPE(qs_kind_type), DIMENSION(:), POINTER          :: qs_kind_set
 
       CALL timeset(routineN, handle)
 
@@ -1249,10 +1252,13 @@ CONTAINS
             END IF
          END IF
 
-         CALL get_qs_env(qs_env, do_kpoints=do_kpoints)
+         CALL get_qs_env(qs_env, do_kpoints=do_kpoints, qs_kind_set=qs_kind_set)
+         CALL get_qs_kind_set(qs_kind_set, cneo_potential_present=cneo_potential_present)
 
          IF (do_kpoints) THEN
             CPWARN("Moments not implemented for k-point calculations!")
+         ELSE IF (cneo_potential_present) THEN
+            CPWARN("Moments not implemented for CNEO calculations!")
          ELSE
             IF (periodic) THEN
                CALL qs_moment_berry_phase(qs_env, magnetic, maxmom, reference, ref_point, unit_nr)
@@ -1286,6 +1292,8 @@ CONTAINS
             END IF
             IF (do_kpoints) THEN
                CPWARN("Moments not implemented for k-point calculations!")
+            ELSE IF (cneo_potential_present) THEN
+               CPWARN("Moments not implemented for CNEO calculations!")
             ELSE
                IF (periodic) THEN
                   CALL qs_moment_berry_phase(qs_env, magnetic, maxmom, reference, ref_point, unit_nr)
@@ -1913,7 +1921,7 @@ CONTAINS
       TYPE(particle_list_type), POINTER                  :: particles
       TYPE(particle_type), DIMENSION(:), POINTER         :: particle_set
       TYPE(pw_c1d_gs_type)                               :: aux_g, rho_elec_gspace
-      TYPE(pw_c1d_gs_type), POINTER                      :: rho0_s_gs, rho_core
+      TYPE(pw_c1d_gs_type), POINTER                      :: rho0_s_gs, rho_core, rhoz_cneo_s_gs
       TYPE(pw_env_type), POINTER                         :: pw_env
       TYPE(pw_pool_p_type), DIMENSION(:), POINTER        :: pw_pools
       TYPE(pw_pool_type), POINTER                        :: auxbas_pw_pool
@@ -1960,7 +1968,7 @@ CONTAINS
       ! Print the total density (electronic + core charge)
       IF (BTEST(cp_print_key_should_output(logger%iter_info, input, &
                                            "DFT%PRINT%TOT_DENSITY_CUBE"), cp_p_file)) THEN
-         NULLIFY (rho_core, rho0_s_gs)
+         NULLIFY (rho_core, rho0_s_gs, rhoz_cneo_s_gs)
          append_cube = section_get_lval(input, "DFT%PRINT%TOT_DENSITY_CUBE%APPEND")
          my_pos_cube = "REWIND"
          IF (append_cube) THEN
@@ -1968,17 +1976,29 @@ CONTAINS
          END IF
 
          CALL get_qs_env(qs_env=qs_env, pw_env=pw_env, rho_core=rho_core, &
-                         rho0_s_gs=rho0_s_gs)
+                         rho0_s_gs=rho0_s_gs, rhoz_cneo_s_gs=rhoz_cneo_s_gs)
          CALL pw_env_get(pw_env, auxbas_pw_pool=auxbas_pw_pool, &
                          pw_pools=pw_pools)
          CALL auxbas_pw_pool%create_pw(wf_r)
          IF (dft_control%qs_control%gapw) THEN
             IF (dft_control%qs_control%gapw_control%nopaw_as_gpw) THEN
                CALL pw_axpy(rho_core, rho0_s_gs)
+               IF (ASSOCIATED(rhoz_cneo_s_gs)) THEN
+                  CALL pw_axpy(rhoz_cneo_s_gs, rho0_s_gs)
+               END IF
                CALL pw_transfer(rho0_s_gs, wf_r)
                CALL pw_axpy(rho_core, rho0_s_gs, -1.0_dp)
+               IF (ASSOCIATED(rhoz_cneo_s_gs)) THEN
+                  CALL pw_axpy(rhoz_cneo_s_gs, rho0_s_gs, -1.0_dp)
+               END IF
             ELSE
+               IF (ASSOCIATED(rhoz_cneo_s_gs)) THEN
+                  CALL pw_axpy(rhoz_cneo_s_gs, rho0_s_gs)
+               END IF
                CALL pw_transfer(rho0_s_gs, wf_r)
+               IF (ASSOCIATED(rhoz_cneo_s_gs)) THEN
+                  CALL pw_axpy(rhoz_cneo_s_gs, rho0_s_gs, -1.0_dp)
+               END IF
             END IF
          ELSE
             CALL pw_transfer(rho_core, wf_r)
