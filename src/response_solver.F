@@ -1214,6 +1214,9 @@ CONTAINS
             CALL get_qs_env(qs_env, natom=natom)
             ! add rho0 contributions to GS density (only for Coulomb) only for gapw
             CALL pw_axpy(local_rho_set_gs%rho0_mpole%rho0_s_gs, rho_tot_gspace_gs)
+            IF (ASSOCIATED(local_rho_set_gs%rho0_mpole%rhoz_cneo_s_gs)) THEN
+               CALL pw_axpy(local_rho_set_gs%rho0_mpole%rhoz_cneo_s_gs, rho_tot_gspace_gs)
+            END IF
             IF (dft_control%qs_control%gapw_control%nopaw_as_gpw) THEN
                CALL get_qs_env(qs_env=qs_env, rho_core=rho_core)
                CALL pw_axpy(rho_core, rho_tot_gspace_gs)
@@ -1586,6 +1589,9 @@ CONTAINS
          ! contribution for both T and D^Z
          IF (gapw) THEN
             CALL pw_axpy(local_rho_set_t%rho0_mpole%rho0_s_gs, rhoz_tot_gspace)
+            IF (ASSOCIATED(local_rho_set_t%rho0_mpole%rhoz_cneo_s_gs)) THEN
+               CALL pw_axpy(local_rho_set_t%rho0_mpole%rhoz_cneo_s_gs, rhoz_tot_gspace)
+            END IF
          END IF
          CALL pw_poisson_solve(poisson_env, rhoz_tot_gspace, ehartree, zv_hartree_gspace)
 
@@ -1684,6 +1690,9 @@ CONTAINS
          ! add rho0 contributions to response density (only for Coulomb) only for gapw
          IF (gapw) THEN
             CALL pw_axpy(local_rho_set_t%rho0_mpole%rho0_s_gs, rho_tot_gspace_t)
+            IF (ASSOCIATED(local_rho_set_t%rho0_mpole%rhoz_cneo_s_gs)) THEN
+               CALL pw_axpy(local_rho_set_t%rho0_mpole%rhoz_cneo_s_gs, rho_tot_gspace_t)
+            END IF
             ! compute response Coulomb potential
             CALL auxbas_pw_pool%create_pw(v_hartree_gspace_t, &
                                           use_data=COMPLEXDATA1D, in_space=RECIPROCALSPACE)

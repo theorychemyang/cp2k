@@ -835,10 +835,13 @@ CONTAINS
 
       DO ikind = 1, SIZE(atomic_kind_set)
          CALL get_atomic_kind(atomic_kind_set(ikind), natom=natom, atom_list=atom_list)
-         CALL get_qs_kind(qs_kind_set(ikind), paw_atom=paw_atom, &
-                          alpha_core_charge=alpha, ccore_charge=pab(1, 1))
+         CALL get_qs_kind(qs_kind_set(ikind), paw_atom=paw_atom)
 
          IF (my_only_nopaw .AND. paw_atom) CYCLE
+
+         CALL get_qs_kind(qs_kind_set(ikind), alpha_core_charge=alpha, &
+                          ccore_charge=pab(1, 1))
+
          IF (alpha == 0.0_dp .OR. pab(1, 1) == 0.0_dp) CYCLE
 
          nthread = 1

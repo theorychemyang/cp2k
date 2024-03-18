@@ -155,7 +155,7 @@ CONTAINS
       INTEGER                                            :: handle, ispin, output_unit
       TYPE(cp_logger_type), POINTER                      :: logger
       TYPE(dft_control_type), POINTER                    :: dft_control
-      TYPE(pw_type), POINTER                             :: rho0_s_rs
+      TYPE(pw_type), POINTER                             :: rho0_s_rs, rhoz_cneo_s_rs
       TYPE(section_vals_type), POINTER                   :: input
 
       CALL timeset(routineN, handle)
@@ -177,9 +177,13 @@ CONTAINS
       END DO
       IF (dft_control%qs_control%gapw) THEN
          CALL get_qs_env(qs_env=qs_env, &
-                         rho0_s_rs=rho0_s_rs)
+                         rho0_s_rs=rho0_s_rs, &
+                         rhoz_cneo_s_rs=rhoz_cneo_s_rs)
          CPASSERT(ASSOCIATED(rho0_s_rs))
          qmmm_energy = qmmm_energy + pw_integral_ab(rho0_s_rs, v_qmmm)
+         IF (ASSOCIATED(rhoz_cneo_s_rs)) THEN
+            qmmm_energy = qmmm_energy + pw_integral_ab(rhoz_cneo_s_rs, v_qmmm)
+         END IF
       END IF
 
       CALL cp_print_key_finished_output(output_unit, logger, input, &

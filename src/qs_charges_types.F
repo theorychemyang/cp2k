@@ -44,6 +44,8 @@ MODULE qs_charges_types
       REAL(KIND=dp) :: total_rho_soft_gspace
       REAL(KIND=dp), DIMENSION(:), POINTER  :: total_rho1_hard, &
                                                total_rho1_soft
+      REAL(KIND=dp) :: total_rho1_hard_nuc
+      REAL(KIND=dp) :: total_rho1_soft_nuc_rspace, total_rho1_soft_nuc_lebedev
       REAL(KIND=dp) :: background
    END TYPE qs_charges_type
 
@@ -79,6 +81,9 @@ CONTAINS
       qs_charges%total_rho1_hard(:) = 0.0_dp
       ALLOCATE (qs_charges%total_rho1_soft(nspins))
       qs_charges%total_rho1_soft(:) = 0.0_dp
+      qs_charges%total_rho1_hard_nuc = 0.0_dp
+      qs_charges%total_rho1_soft_nuc_rspace = 0.0_dp
+      qs_charges%total_rho1_soft_nuc_lebedev = 0.0_dp
    END SUBROUTINE qs_charges_create
 
 ! **************************************************************************************************

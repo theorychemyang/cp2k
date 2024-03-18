@@ -78,19 +78,21 @@ CONTAINS
       TYPE(pw_pool_type), POINTER                        :: auxbas_pw_pool
       TYPE(pw_type)                                      :: vdip_r, wf_r
       TYPE(pw_type), DIMENSION(:), POINTER               :: rho_r
-      TYPE(pw_type), POINTER                             :: rho0_s_gs, rho_core, v_hartree_rspace
+      TYPE(pw_type), POINTER                             :: rho0_s_gs, rho_core, v_hartree_rspace, &
+                                                            rhoz_cneo_s_gs
       TYPE(qs_rho_type), POINTER                         :: rho
       TYPE(qs_subsys_type), POINTER                      :: subsys
 
       CALL timeset(routineN, handle)
       NULLIFY (cell, dft_control, rho, pw_env, auxbas_pw_pool, &
-               pw_pools, subsys, v_hartree_rspace, rho_r)
+               pw_pools, subsys, v_hartree_rspace, rho_r, rhoz_cneo_s_gs)
 
       CALL get_qs_env(qs_env, &
                       dft_control=dft_control, &
                       rho=rho, &
                       rho_core=rho_core, &
                       rho0_s_gs=rho0_s_gs, &
+                      rhoz_cneo_s_gs=rhoz_cneo_s_gs, &
                       cell=cell, &
                       pw_env=pw_env, &
                       subsys=subsys, &
@@ -107,6 +109,9 @@ CONTAINS
 
       IF (dft_control%qs_control%gapw) THEN
          CALL pw_transfer(rho0_s_gs, wf_r)
+         IF (ASSOCIATED(rhoz_cneo_s_gs)) THEN
+            CALL pw_axpy(rhoz_cneo_s_gs, wf_r)
+         END IF
          IF (dft_control%qs_control%gapw_control%nopaw_as_gpw) THEN
             CALL pw_axpy(rho_core, wf_r)
          END IF

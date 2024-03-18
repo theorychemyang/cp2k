@@ -44,7 +44,9 @@ MODULE basis_set_container_types
                                                ri_hfx_basis = 115, &
                                                p_lri_aux_basis = 116, &
                                                aux_opt_basis = 117, &
-                                               min_basis = 118
+                                               min_basis = 118, &
+                                               nuclear_basis = 119, &
+                                               nuclear_soft_basis = 120
 ! **************************************************************************************************
    TYPE basis_set_container_type
       PRIVATE
@@ -130,6 +132,10 @@ CONTAINS
          basis_type_nr = ri_xas_basis
       CASE ("AUX_OPT")
          basis_type_nr = aux_opt_basis
+      CASE ("NUC")
+         basis_type_nr = nuclear_basis
+      CASE ("NUC_SOFT")
+         basis_type_nr = nuclear_soft_basis
       CASE DEFAULT
          basis_type_nr = unknown_basis
       END SELECT

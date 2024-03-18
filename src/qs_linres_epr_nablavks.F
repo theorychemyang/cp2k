@@ -55,6 +55,7 @@ MODULE qs_linres_epr_nablavks
                                               REALSPACE,&
                                               RECIPROCALSPACE,&
                                               pw_type
+   USE qs_cneo_types,                   ONLY: cneo_potential_type
    USE qs_environment_types,            ONLY: get_qs_env,&
                                               qs_environment_type
    USE qs_gapw_densities,               ONLY: prepare_gapw_den
@@ -162,6 +163,7 @@ CONTAINS
       TYPE(rhoz_type), DIMENSION(:), POINTER             :: rhoz_set
       TYPE(section_vals_type), POINTER                   :: g_section, input, lr_section, xc_section
       TYPE(sgp_potential_type), POINTER                  :: sgp_potential
+      TYPE(cneo_potential_type), POINTER                 :: cneo_potential
 
 ! R0
 ! R0
@@ -476,6 +478,7 @@ CONTAINS
                           gth_potential=gth_potential, &
                           sgp_potential=sgp_potential, &
                           all_potential=all_potential, &
+                          cneo_potential=cneo_potential, &
                           paw_atom=paw_atom)
 
          IF (ASSOCIATED(gth_potential)) THEN
@@ -781,6 +784,10 @@ CONTAINS
          ELSE IF (ASSOCIATED(sgp_potential)) THEN
 
             CPABORT("EPR with SGP potentials is not implemented")
+
+         ELSE IF (ASSOCIATED(cneo_potential)) THEN
+
+            CPABORT("EPR with CNEO potentials is not implemented")
 
          ELSE IF (ASSOCIATED(all_potential)) THEN
 
